@@ -10,4 +10,4 @@ FROM alpine:latest
 COPY --from=gobuild /src /
 WORKDIR /
 EXPOSE 8080
-ENTRYPOINT ["/go-serice"]
+ENTRYPOINT ["/go-service"]
