@@ -1,55 +1,58 @@
 package main
 
 import (
+	"database/sql"
+	"encoding/json"
 	"fmt"
-	"io"
+	"go-service/newsfeed"
+	"log"
 	"net/http"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+	_ "github.com/mattn/go-sqlite3"
 )
 
-func bonjour(w http.ResponseWriter, req *http.Request) {
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	fmt.Fprintf(w, "anselbrandt.dev<br/><br/><a href=\"/headers\">headers</a><br/><br/><a href=\"/kanye\">kanye quotes</a>")
-}
-
-func headers(w http.ResponseWriter, req *http.Request) {
-
-	for name, headers := range req.Header {
-		for _, h := range headers {
-			fmt.Fprintf(w, "%v: %v\n", name, h)
-		}
-	}
-}
-
-func api(w http.ResponseWriter, req *http.Request) {
-
-	resp, err := http.Get("https://anselbrandt.com/api")
-	if err != nil {
-		panic(err)
-	}
-	w.Header().Set("Content-Type", resp.Header.Get("Content-Type"))
-	w.Header().Set("Content-Length", resp.Header.Get("Content-Length"))
-	io.Copy(w, resp.Body)
-	resp.Body.Close()
-}
-
-func kanye(w http.ResponseWriter, req *http.Request) {
-
-	resp, err := http.Get("https://api.kanye.rest")
-	if err != nil {
-		panic(err)
-	}
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	io.Copy(w, resp.Body)
-	resp.Body.Close()
+type Post struct {
+	Content string
 }
 
 func main() {
-	fmt.Println("server is running...")
+	db, err := sql.Open("sqlite3", "./newsfeed.db")
+	if err != nil {
+		log.Fatal(err)
+	}
+	feed := newsfeed.NewFeed(db)
+	items := feed.Get()
+	fmt.Println(items)
 
-	http.HandleFunc("/", bonjour)
-	http.HandleFunc("/api", api)
-	http.HandleFunc("/headers", headers)
-	http.HandleFunc("/kanye", kanye)
+	r := chi.NewRouter()
+	r.Use(middleware.Logger)
+	r.Use(middleware.AllowContentType("application/json", "text/xml"))
 
-	http.ListenAndServe(":8080", nil)
+	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+		items := feed.Get()
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(items)
+		// w.Write([]byte("Hello World!"))
+	})
+
+	r.Post("/post", func(w http.ResponseWriter, r *http.Request) {
+		var p Post
+		err := json.NewDecoder(r.Body).Decode(&p)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		item := newsfeed.Item{
+			Content: p.Content,
+		}
+		rowid := feed.Add(item)
+		json.NewEncoder(w).Encode(rowid)
+		// fmt.Fprintf(w, "Post: %+v", p)
+	})
+
+	address := ":3000"
+	log.Println("Starting server on address", address)
+	http.ListenAndServe(address, r)
 }
