@@ -13,7 +13,7 @@ import (
 )
 
 type Post struct {
-	Content string
+	Contents string
 }
 
 func main() {
@@ -28,7 +28,7 @@ func main() {
 	r.Use(middleware.AllowContentType("application/json", "text/xml"))
 
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-		items := feed.Get()
+		items := feed.GetAll()
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(items)
 		// w.Write([]byte("Hello World!"))
@@ -42,16 +42,22 @@ func main() {
 			http.Error(w, "", http.StatusBadRequest)
 			return
 		}
-		item := newsfeed.Item{
-			Content: p.Content,
+		contents := newsfeed.Item{
+			Contents: p.Contents,
 		}
-		rowid, err := feed.Add(item)
-		if err != nil {
-			log.Println(err.Error())
+		rowid, addErr := feed.Add(contents)
+		if addErr != nil {
+			log.Println(addErr.Error())
 			http.Error(w, "", http.StatusInternalServerError)
 			return
 		}
-		json.NewEncoder(w).Encode(rowid)
+		item, getErr := feed.Get(rowid)
+		if getErr != nil {
+			log.Println(getErr.Error())
+			http.Error(w, "", http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(item)
 		// fmt.Fprintf(w, "Post: %+v", p)
 	})
 

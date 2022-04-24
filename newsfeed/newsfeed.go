@@ -2,6 +2,7 @@ package newsfeed
 
 import (
 	"database/sql"
+	"fmt"
 	"log"
 )
 
@@ -25,7 +26,7 @@ func NewFeed(db *sql.DB) *Feed {
 	}
 }
 
-func (feed *Feed) Get() []Item {
+func (feed *Feed) GetAll() []Item {
 	items := []Item{}
 	rows, err := feed.DB.Query(`
 	SELECT * FROM newsfeed
@@ -34,16 +35,34 @@ func (feed *Feed) Get() []Item {
 		log.Fatal(err)
 	}
 	var id int
-	var content string
+	var contents string
 	for rows.Next() {
-		rows.Scan(&id, &content)
+		rows.Scan(&id, &contents)
 		item := Item{
-			ID:      id,
-			Content: content,
+			ID:       id,
+			Contents: contents,
 		}
 		items = append(items, item)
 	}
 	return items
+}
+
+func (feed *Feed) Get(rowid int64) (Item, error) {
+	item := Item{}
+	var id int
+	var contents string
+	err := feed.DB.QueryRow(`
+	SELECT * FROM newsfeed
+	WHERE ID=?`, rowid).Scan(&id, &contents)
+	if err != nil {
+		return item, err
+	}
+	item = Item{
+		ID:       id,
+		Contents: contents,
+	}
+	fmt.Printf("%d %s\n", id, contents)
+	return item, nil
 }
 
 func (feed *Feed) Add(item Item) (int64, error) {
@@ -53,7 +72,7 @@ INSERT INTO newsfeed (contents) values (?)
 	if err != nil {
 		return 0, err
 	}
-	result, err := stmt.Exec(item.Content)
+	result, err := stmt.Exec(item.Contents)
 	if err != nil {
 		return 0, err
 	}
