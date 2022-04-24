@@ -42,6 +42,10 @@ func main() {
 			http.Error(w, "", http.StatusBadRequest)
 			return
 		}
+		if len(p.Contents) == 0 {
+			http.Error(w, "", http.StatusBadRequest)
+			return
+		}
 		contents := newsfeed.Item{
 			Contents: p.Contents,
 		}

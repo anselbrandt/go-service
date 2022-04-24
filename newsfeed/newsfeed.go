@@ -2,7 +2,6 @@ package newsfeed
 
 import (
 	"database/sql"
-	"fmt"
 	"log"
 )
 
@@ -61,7 +60,6 @@ func (feed *Feed) Get(rowid int64) (Item, error) {
 		ID:       id,
 		Contents: contents,
 	}
-	fmt.Printf("%d %s\n", id, contents)
 	return item, nil
 }
 
