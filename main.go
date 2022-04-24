@@ -3,7 +3,6 @@ package main
 import (
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	"go-service/newsfeed"
 	"log"
 	"net/http"
@@ -23,8 +22,6 @@ func main() {
 		log.Fatal(err)
 	}
 	feed := newsfeed.NewFeed(db)
-	items := feed.Get()
-	fmt.Println(items)
 
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
@@ -41,18 +38,24 @@ func main() {
 		var p Post
 		err := json.NewDecoder(r.Body).Decode(&p)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			log.Println(err.Error())
+			http.Error(w, "", http.StatusBadRequest)
 			return
 		}
 		item := newsfeed.Item{
 			Content: p.Content,
 		}
-		rowid := feed.Add(item)
+		rowid, err := feed.Add(item)
+		if err != nil {
+			log.Println(err.Error())
+			http.Error(w, "", http.StatusInternalServerError)
+			return
+		}
 		json.NewEncoder(w).Encode(rowid)
 		// fmt.Fprintf(w, "Post: %+v", p)
 	})
 
 	address := ":3000"
-	log.Println("Starting server on address", address)
+	log.Println("Starting server on ", address)
 	http.ListenAndServe(address, r)
 }

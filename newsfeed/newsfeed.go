@@ -46,20 +46,20 @@ func (feed *Feed) Get() []Item {
 	return items
 }
 
-func (feed *Feed) Add(item Item) int64 {
+func (feed *Feed) Add(item Item) (int64, error) {
 	stmt, err := feed.DB.Prepare(`
 INSERT INTO newsfeed (contents) values (?)
 `)
 	if err != nil {
-		log.Fatal(err)
+		return 0, err
 	}
-	result, err2 := stmt.Exec(item.Content)
-	if err2 != nil {
-		log.Fatal(err2)
+	result, err := stmt.Exec(item.Content)
+	if err != nil {
+		return 0, err
 	}
-	rowid, err3 := result.LastInsertId()
-	if err3 != nil {
-		log.Fatal(err3)
+	rowid, err := result.LastInsertId()
+	if err != nil {
+		return rowid, err
 	}
-	return rowid
+	return rowid, nil
 }
